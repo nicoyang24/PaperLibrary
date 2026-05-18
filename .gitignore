@@ -2,6 +2,7 @@
 __pycache__/
 .argos/
 .venv/
+library-files/
 build/
 dist/
 *.spec.bak

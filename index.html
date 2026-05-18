@@ -14,7 +14,12 @@
           <span class="brand-mark"></span>
           Paper Library
         </a>
-        <button class="text-button danger" type="button" data-paper-clear>清空</button>
+        <div class="sidebar-actions">
+          <button class="text-button" type="button" data-theme-toggle>深色</button>
+          <button class="text-button" type="button" data-lang-toggle>EN</button>
+          <button class="text-button" type="button" data-library-manage>管理</button>
+          <button class="text-button danger" type="button" data-paper-clear>清空</button>
+        </div>
       </div>
 
       <form class="import-box" data-paper-form>
@@ -28,6 +33,11 @@
         <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
         <p class="status" data-paper-status>论文库准备就绪。</p>
       </form>
+
+      <section class="text-import-box" aria-label="从文本导入论文">
+        <textarea rows="5" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
+        <button class="secondary-button" type="button" data-text-import>识别链接并导入</button>
+      </section>
 
       <div class="library-toolbar">
         <input type="search" placeholder="搜索标题、摘要或文件名" data-paper-search>
@@ -56,6 +66,7 @@
         </div>
         <div class="detail-actions">
           <button class="secondary-button" type="button" data-paper-open>打开 PDF</button>
+          <button class="secondary-button" type="button" data-paper-open-folder>打开文件夹</button>
           <button class="secondary-button danger" type="button" data-paper-delete>删除</button>
         </div>
       </header>
@@ -93,6 +104,69 @@
         </div>
         <div class="paper-gallery" data-paper-gallery aria-label="论文图片"></div>
       </section>
+    </section>
+
+    <section class="manager-pane" data-manager-pane hidden>
+      <header class="manager-hero">
+        <div>
+          <p class="eyebrow">Library Manager</p>
+          <h1>论文库管理</h1>
+        </div>
+        <p class="manager-summary" data-manager-summary>正在读取论文库...</p>
+      </header>
+
+      <section class="manager-controls" aria-label="论文筛选">
+        <input type="search" placeholder="搜索标题、摘要、文件名、分类或来源链接" data-manager-search>
+        <select data-manager-category aria-label="按分类筛选">
+          <option value="">全部分类</option>
+        </select>
+        <select data-manager-sort aria-label="排序">
+          <option value="imported-desc">最近导入</option>
+          <option value="imported-asc">最早导入</option>
+          <option value="title-asc">标题 A-Z</option>
+          <option value="title-desc">标题 Z-A</option>
+          <option value="size-desc">文件从大到小</option>
+          <option value="size-asc">文件从小到大</option>
+        </select>
+        <select data-manager-page-size aria-label="每页数量">
+          <option value="50">每页 50</option>
+          <option value="100">每页 100</option>
+          <option value="200">每页 200</option>
+        </select>
+      </section>
+
+      <section class="manager-bulk" data-manager-bulk hidden>
+        <strong data-manager-selected-summary>已选 0 篇</strong>
+        <input type="text" placeholder="批量设置分类" data-manager-bulk-category>
+        <button class="secondary-button" type="button" data-manager-bulk-apply>应用分类</button>
+        <button class="secondary-button" type="button" data-manager-clear-selection>取消选择</button>
+        <button class="secondary-button danger" type="button" data-manager-bulk-delete>删除所选</button>
+      </section>
+
+      <section class="manager-table-wrap" aria-label="论文列表">
+        <table class="manager-table">
+          <thead>
+            <tr>
+              <th class="check-cell"><input type="checkbox" data-manager-select-page aria-label="选择当前页"></th>
+              <th>标题</th>
+              <th>分类</th>
+              <th>文件</th>
+              <th>页数</th>
+              <th>图片</th>
+              <th>大小</th>
+              <th>导入时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody data-manager-rows></tbody>
+        </table>
+      </section>
+
+      <footer class="manager-pagination">
+        <button class="secondary-button" type="button" data-manager-prev-page>上一页</button>
+        <span data-manager-page-info>第 1 页</span>
+        <button class="secondary-button" type="button" data-manager-next-page>下一页</button>
+      </footer>
     </section>
 
     <section class="empty-state" data-empty-state>

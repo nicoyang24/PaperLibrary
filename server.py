@@ -1,12 +1,16 @@
 import base64
+import hashlib
 import re
 import json
 import mimetypes
 import os
+import subprocess
 import sys
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import unquote, urlparse
+from urllib.request import Request, urlopen
 
 import fitz
 
@@ -23,6 +27,8 @@ ARGOS_HOME = ROOT / ".argos"
 if not ARGOS_HOME.exists() and (STATIC_ROOT / ".argos").exists():
     ARGOS_HOME = STATIC_ROOT / ".argos"
 PORT_FILE = STATIC_ROOT / "paper-library-port.json"
+MAX_PDF_BYTES = 35 * 1024 * 1024
+LIBRARY_FILES = ROOT / "library-files"
 
 
 def configure_argos_paths():
@@ -202,6 +208,103 @@ def parse_paper(file_bytes, file_name):
         document.close()
 
 
+def enrich_paper_result(result):
+    translation = translate_paper_fields(result["title"], result["abstract"])
+    result["original_title"] = result["title"]
+    result["original_abstract"] = result["abstract"]
+    result["title"] = translation["title"]
+    result["abstract"] = translation["abstract"]
+    result["translated"] = translation["translated"]
+    result["translation_provider"] = translation["translation_provider"]
+    result["translation_error"] = translation["translation_error"]
+    return result
+
+
+def file_name_from_url(url):
+    path_name = Path(unquote(urlparse(url).path)).name
+    if path_name.lower().endswith(".pdf"):
+        return path_name
+    return "paper.pdf"
+
+
+def safe_file_name(name):
+    cleaned = re.sub(r'[\\/:*?"<>|]+', " ", name or "paper.pdf")
+    cleaned = clean_text(cleaned).strip(". ")
+    if not cleaned.lower().endswith(".pdf"):
+        cleaned = f"{cleaned or 'paper'}.pdf"
+    return cleaned
+
+
+def save_pdf_copy(file_bytes, file_name):
+    LIBRARY_FILES.mkdir(parents=True, exist_ok=True)
+    digest = hashlib.sha256(file_bytes).hexdigest()
+    target_name = f"{digest[:12]}-{safe_file_name(file_name)}"
+    target = (LIBRARY_FILES / target_name).resolve()
+    library_root = LIBRARY_FILES.resolve()
+    if library_root not in target.parents:
+        raise ValueError("Invalid PDF file path.")
+    if not target.exists():
+        target.write_bytes(file_bytes)
+    return str(target)
+
+
+def is_safe_library_path(path):
+    try:
+        resolved = Path(path).resolve()
+        library_root = LIBRARY_FILES.resolve()
+        return resolved.exists() and library_root in resolved.parents
+    except Exception:
+        return False
+
+
+def open_containing_folder(path):
+    resolved = Path(path).resolve()
+    if not is_safe_library_path(resolved):
+        raise ValueError("File is not in the local library folder.")
+
+    folder = resolved.parent
+    if sys.platform.startswith("win"):
+        os.startfile(str(folder))
+    elif sys.platform == "darwin":
+        subprocess.run(["open", str(folder)], check=False)
+    else:
+        subprocess.run(["xdg-open", str(folder)], check=False)
+
+
+def download_pdf(url):
+    parsed = urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        raise ValueError("Only http and https PDF links are supported.")
+
+    request = Request(
+        url,
+        headers={
+            "User-Agent": "PaperLibrary/1.0 (+local PDF importer)",
+            "Accept": "application/pdf,*/*;q=0.8",
+        },
+    )
+    with urlopen(request, timeout=30) as response:
+        content_length = response.headers.get("Content-Length")
+        if content_length and int(content_length) > MAX_PDF_BYTES:
+            raise ValueError("PDF file is larger than 35MB.")
+
+        chunks = []
+        total = 0
+        while True:
+            chunk = response.read(1024 * 1024)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > MAX_PDF_BYTES:
+                raise ValueError("PDF file is larger than 35MB.")
+            chunks.append(chunk)
+
+    file_bytes = b"".join(chunks)
+    if not file_bytes.startswith(b"%PDF"):
+        raise ValueError("The link did not return a valid PDF file.")
+    return file_bytes
+
+
 class Handler(SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=str(STATIC_ROOT), **kwargs)
@@ -209,6 +312,12 @@ class Handler(SimpleHTTPRequestHandler):
     def do_POST(self):
         if self.path == "/api/paper":
             self.handle_paper()
+            return
+        if self.path == "/api/paper-url":
+            self.handle_paper_url()
+            return
+        if self.path == "/api/open-folder":
+            self.handle_open_folder()
             return
 
         self.send_error(404, "Not found")
@@ -235,7 +344,7 @@ class Handler(SimpleHTTPRequestHandler):
         if content_length <= 0:
             self.send_json({"error": "上传文件为空。"}, status=400)
             return
-        if content_length > 35 * 1024 * 1024:
+        if content_length > MAX_PDF_BYTES:
             self.send_json({"error": "PDF 文件过大，请选择 35MB 以内的文件。"}, status=413)
             return
 
@@ -268,15 +377,60 @@ class Handler(SimpleHTTPRequestHandler):
             self.send_json({"error": f"PDF 解析失败：{error}"}, status=500)
             return
 
-        translation = translate_paper_fields(result["title"], result["abstract"])
-        result["original_title"] = result["title"]
-        result["original_abstract"] = result["abstract"]
-        result["title"] = translation["title"]
-        result["abstract"] = translation["abstract"]
-        result["translated"] = translation["translated"]
-        result["translation_provider"] = translation["translation_provider"]
-        result["translation_error"] = translation["translation_error"]
+        result = enrich_paper_result(result)
+        result["local_file_path"] = save_pdf_copy(file_bytes, file_name)
         self.send_json(result)
+
+    def handle_paper_url(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if content_length <= 0:
+            self.send_json({"error": "Missing PDF URL."}, status=400)
+            return
+        if content_length > 1024 * 1024:
+            self.send_json({"error": "Request body is too large."}, status=413)
+            return
+
+        try:
+            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            url = clean_text(payload.get("url", ""))
+            file_name = clean_text(payload.get("file_name", "")) or file_name_from_url(url)
+            if not url:
+                raise ValueError("Missing PDF URL.")
+            file_bytes = download_pdf(url)
+            result = parse_paper(file_bytes, file_name)
+        except Exception as error:
+            message = str(error) or repr(error)
+            self.send_json({"error": f"PDF link import failed: {message}"}, status=500)
+            return
+
+        result = enrich_paper_result(result)
+        result["source_url"] = url
+        result["local_file_path"] = save_pdf_copy(file_bytes, file_name)
+        result["pdf_base64"] = base64.b64encode(file_bytes).decode("ascii")
+        result["file_size"] = len(file_bytes)
+        self.send_json(result)
+
+    def handle_open_folder(self):
+        content_length = int(self.headers.get("Content-Length", "0"))
+        if content_length <= 0:
+            self.send_json({"error": "Missing file path."}, status=400)
+            return
+        if content_length > 8192:
+            self.send_json({"error": "Request body is too large."}, status=413)
+            return
+
+        try:
+            payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            local_file_path = clean_text(payload.get("local_file_path", ""))
+            if not local_file_path:
+                raise ValueError("Missing file path.")
+            open_containing_folder(local_file_path)
+        except Exception as error:
+            message = str(error) or repr(error)
+            self.send_json({"error": f"Could not open folder: {message}"}, status=500)
+            return
+
+        self.send_json({"ok": True})
 
     def send_json(self, payload, status=200):
         data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
