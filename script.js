@@ -119,6 +119,7 @@ const messages = {
     pageInfo: (page, total) => `第 ${page} / ${total} 页`,
     managerSummary: (total, shown) => `共 ${total} 篇，当前显示 ${shown} 篇`,
     view: '查看',
+    more: '更多',
     source: '来源',
     noPapers: '暂无论文。',
     noMatches: '没有匹配结果。',
@@ -192,6 +193,7 @@ const messages = {
     pageInfo: (page, total) => `Page ${page} / ${total}`,
     managerSummary: (total, shown) => `${total} total, ${shown} shown`,
     view: 'View',
+    more: 'More',
     source: 'Source',
     noPapers: 'No papers yet.',
     noMatches: 'No matches.',
@@ -779,6 +781,15 @@ const renderManagerBulk = () => {
   managerSelectedSummary.textContent = t('selectedCount', managerSelectedIds.size);
 };
 
+const closeActionMenus = (exceptMenu = null) => {
+  document.querySelectorAll('[data-action-menu]').forEach((menu) => {
+    if (menu !== exceptMenu) {
+      menu.querySelector('[data-action-menu-panel]').hidden = true;
+      menu.querySelector('[data-manager-more]').setAttribute('aria-expanded', 'false');
+    }
+  });
+};
+
 const renderManagerRows = () => {
   managerRows.replaceChildren();
   const pageSize = Number(managerPageSize.value);
@@ -835,35 +846,55 @@ const renderManagerRows = () => {
     dateCell.textContent = formatDate(paper.importedAt);
 
     const actionCell = document.createElement('td');
-    actionCell.className = 'row-actions';
+    actionCell.className = 'action-cell';
+    const actionWrap = document.createElement('div');
+    actionWrap.className = 'row-actions';
     const viewButton = document.createElement('button');
     viewButton.type = 'button';
-    viewButton.className = 'table-action';
+    viewButton.className = 'table-action compact-action';
     viewButton.dataset.managerViewPaper = paper.id;
     viewButton.textContent = t('view');
     const openButton = document.createElement('button');
     openButton.type = 'button';
-    openButton.className = 'table-action';
+    openButton.className = 'table-action compact-action';
     openButton.dataset.managerOpenPdf = paper.id;
     openButton.textContent = 'PDF';
+
+    const actionMenu = document.createElement('div');
+    actionMenu.className = 'action-menu';
+    actionMenu.dataset.actionMenu = paper.id;
+    const moreButton = document.createElement('button');
+    moreButton.type = 'button';
+    moreButton.className = 'table-action compact-action';
+    moreButton.dataset.managerMore = paper.id;
+    moreButton.setAttribute('aria-expanded', 'false');
+    moreButton.textContent = t('more');
+    const menuPanel = document.createElement('div');
+    menuPanel.className = 'action-menu-panel';
+    menuPanel.dataset.actionMenuPanel = paper.id;
+    menuPanel.hidden = true;
+
     const folderButton = document.createElement('button');
     folderButton.type = 'button';
-    folderButton.className = 'table-action';
+    folderButton.className = 'menu-action';
     folderButton.dataset.managerOpenFolder = paper.id;
     folderButton.textContent = t('openFolder');
     folderButton.disabled = !paper.local_file_path;
     const sourceButton = document.createElement('button');
     sourceButton.type = 'button';
-    sourceButton.className = 'table-action';
+    sourceButton.className = 'menu-action';
     sourceButton.dataset.managerOpenSource = paper.id;
     sourceButton.textContent = t('source');
     sourceButton.disabled = !paper.source_url;
     const deleteButton = document.createElement('button');
     deleteButton.type = 'button';
-    deleteButton.className = 'table-action danger';
+    deleteButton.className = 'menu-action danger';
     deleteButton.dataset.managerDeletePaper = paper.id;
     deleteButton.textContent = t('delete');
-    actionCell.append(viewButton, openButton, folderButton, sourceButton, deleteButton);
+    menuPanel.append(folderButton, sourceButton, deleteButton);
+    actionMenu.append(moreButton, menuPanel);
+    actionWrap.append(viewButton, openButton, actionMenu);
+    actionCell.append(actionWrap);
 
     row.append(checkCell, titleCell, categoryCell, fileCell, pageCell, imageCell, sizeCell, dateCell, actionCell);
     managerRows.append(row);
@@ -1286,14 +1317,27 @@ managerRows?.addEventListener('click', async (event) => {
     return;
   }
 
+  const moreButton = event.target.closest('[data-manager-more]');
+  if (moreButton) {
+    const menu = moreButton.closest('[data-action-menu]');
+    const panel = menu.querySelector('[data-action-menu-panel]');
+    const shouldOpen = panel.hidden;
+    closeActionMenus(menu);
+    panel.hidden = !shouldOpen;
+    moreButton.setAttribute('aria-expanded', String(shouldOpen));
+    return;
+  }
+
   const viewButton = event.target.closest('[data-manager-view-paper]');
   if (viewButton) {
+    closeActionMenus();
     await showPaper(viewButton.dataset.managerViewPaper);
     return;
   }
 
   const openButton = event.target.closest('[data-manager-open-pdf]');
   if (openButton) {
+    closeActionMenus();
     const paper = await getPaper(openButton.dataset.managerOpenPdf);
     if (!paper?.pdf_blob) {
       setStatus('这条记录没有保存原始 PDF。', true);
@@ -1309,6 +1353,7 @@ managerRows?.addEventListener('click', async (event) => {
 
   const sourceButton = event.target.closest('[data-manager-open-source]');
   if (sourceButton) {
+    closeActionMenus();
     const paper = managerPapers.find((item) => item.id === sourceButton.dataset.managerOpenSource);
     if (paper?.source_url) {
       window.open(paper.source_url, '_blank', 'noopener');
@@ -1318,6 +1363,7 @@ managerRows?.addEventListener('click', async (event) => {
 
   const folderButton = event.target.closest('[data-manager-open-folder]');
   if (folderButton) {
+    closeActionMenus();
     const paper = managerPapers.find((item) => item.id === folderButton.dataset.managerOpenFolder);
     try {
       await openLocalFolder(paper);
@@ -1329,11 +1375,20 @@ managerRows?.addEventListener('click', async (event) => {
   }
 
   const deleteButton = event.target.closest('[data-manager-delete-paper]');
-  if (deleteButton && confirm('确定删除这篇论文吗？')) {
-    await removePaper(deleteButton.dataset.managerDeletePaper);
-    managerSelectedIds.delete(deleteButton.dataset.managerDeletePaper);
-    await renderList();
-    await loadManager();
+  if (deleteButton) {
+    closeActionMenus();
+    if (confirm('确定删除这篇论文吗？')) {
+      await removePaper(deleteButton.dataset.managerDeletePaper);
+      managerSelectedIds.delete(deleteButton.dataset.managerDeletePaper);
+      await renderList();
+      await loadManager();
+    }
+  }
+});
+
+document.addEventListener('click', (event) => {
+  if (!event.target.closest('[data-action-menu]')) {
+    closeActionMenus();
   }
 });
 

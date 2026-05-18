@@ -849,7 +849,7 @@ h1 {
   padding: 10px 12px;
   border-bottom: 1px solid rgba(0, 0, 0, 0.07);
   text-align: left;
-  vertical-align: top;
+  vertical-align: middle;
   font-size: 13px;
 }
 
@@ -901,7 +901,7 @@ h1 {
 
 .manager-table th:nth-child(9),
 .manager-table td:nth-child(9) {
-  width: 150px;
+  width: 168px;
 }
 
 .manager-table tr:hover td {
@@ -938,23 +938,84 @@ h1 {
   -webkit-line-clamp: 1;
 }
 
+.action-cell {
+  vertical-align: middle;
+}
+
 .row-actions {
   display: flex;
   gap: 6px;
-  flex-wrap: wrap;
+  align-items: center;
+  flex-wrap: nowrap;
+  position: relative;
+  min-width: 0;
+  white-space: nowrap;
 }
 
 .table-action {
-  min-height: 28px;
+  display: inline-grid;
+  place-items: center;
+  min-height: 32px;
   border: 0;
   border-radius: 6px;
   padding: 0 8px;
   color: var(--accent);
   background: rgba(0, 113, 227, 0.09);
   cursor: pointer;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.compact-action {
+  width: 44px;
+  padding: 0;
 }
 
 .table-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.action-menu {
+  position: relative;
+  flex: 0 0 auto;
+}
+
+.action-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 8;
+  display: grid;
+  gap: 4px;
+  min-width: 124px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.16);
+}
+
+.menu-action {
+  min-height: 30px;
+  border: 0;
+  border-radius: 6px;
+  padding: 0 10px;
+  color: var(--text);
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+}
+
+.menu-action:hover {
+  background: var(--hover);
+}
+
+.menu-action.danger {
+  color: var(--danger);
+}
+
+.menu-action:disabled {
   cursor: not-allowed;
   opacity: 0.42;
 }
