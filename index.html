@@ -15,8 +15,6 @@
           Paper Library
         </a>
         <div class="sidebar-actions">
-          <button class="text-button" type="button" data-theme-toggle>深色</button>
-          <button class="text-button" type="button" data-lang-toggle>EN</button>
           <button class="text-button" type="button" data-library-manage>管理</button>
           <button class="text-button danger" type="button" data-paper-clear>清空</button>
         </div>
@@ -55,6 +53,20 @@
         <button class="secondary-button danger" type="button" data-bulk-delete>删除</button>
       </div>
       <div class="paper-list" data-paper-list></div>
+
+      <div class="sidebar-settings">
+        <button class="settings-button" type="button" data-settings-toggle>设置</button>
+        <div class="settings-panel" data-settings-panel hidden>
+          <button class="settings-row" type="button" data-theme-toggle>
+            <span>外观</span>
+            <strong>深色</strong>
+          </button>
+          <button class="settings-row" type="button" data-lang-toggle>
+            <span>语言</span>
+            <strong>中文</strong>
+          </button>
+        </div>
+      </div>
     </aside>
 
     <section class="detail-pane" data-paper-detail hidden>

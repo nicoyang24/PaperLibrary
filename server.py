@@ -29,6 +29,7 @@ if not ARGOS_HOME.exists() and (STATIC_ROOT / ".argos").exists():
 PORT_FILE = STATIC_ROOT / "paper-library-port.json"
 MAX_PDF_BYTES = 35 * 1024 * 1024
 LIBRARY_FILES = ROOT / "library-files"
+ALLOWED_LOCAL_PATHS = set()
 
 
 def configure_argos_paths():
@@ -257,18 +258,79 @@ def is_safe_library_path(path):
         return False
 
 
+def is_safe_original_pdf_path(path):
+    try:
+        resolved = Path(path).resolve()
+        return resolved.exists() and resolved.is_file() and resolved.suffix.lower() == ".pdf"
+    except Exception:
+        return False
+
+
 def open_containing_folder(path):
     resolved = Path(path).resolve()
-    if not is_safe_library_path(resolved):
-        raise ValueError("File is not in the local library folder.")
+    if not is_safe_library_path(resolved) and not is_safe_original_pdf_path(resolved):
+        raise ValueError("File is not a known local PDF.")
 
-    folder = resolved.parent
     if sys.platform.startswith("win"):
-        os.startfile(str(folder))
+        import ctypes
+
+        result = ctypes.windll.shell32.ShellExecuteW(
+            None,
+            "open",
+            "explorer.exe",
+            f'/select,"{resolved}"',
+            None,
+            1,
+        )
+        if result <= 32:
+            raise OSError(f"Explorer failed to open the folder. ShellExecuteW returned {result}.")
     elif sys.platform == "darwin":
-        subprocess.run(["open", str(folder)], check=False)
+        subprocess.run(["open", "-R", str(resolved)], check=False)
     else:
-        subprocess.run(["xdg-open", str(folder)], check=False)
+        subprocess.run(["xdg-open", str(resolved.parent)], check=False)
+
+
+def choose_local_pdf_paths(mode):
+    import tkinter as tk
+    from tkinter import filedialog
+
+    root = tk.Tk()
+    root.withdraw()
+    root.attributes("-topmost", True)
+    try:
+      if mode == "folder":
+          folder = filedialog.askdirectory(title="Select a folder containing PDF papers")
+          if not folder:
+              return []
+          return [str(path) for path in Path(folder).rglob("*.pdf") if path.is_file()]
+
+      paths = filedialog.askopenfilenames(
+          title="Select PDF papers",
+          filetypes=[("PDF files", "*.pdf"), ("All files", "*.*")],
+      )
+      return [str(Path(path)) for path in paths]
+    finally:
+      root.destroy()
+
+
+def parse_local_pdf_path(path):
+    resolved = Path(path).resolve()
+    if not is_safe_original_pdf_path(resolved):
+        raise ValueError("Selected file is not a valid PDF.")
+    if str(resolved) not in ALLOWED_LOCAL_PATHS:
+        raise ValueError("PDF path was not selected from this app session.")
+    file_bytes = resolved.read_bytes()
+    if len(file_bytes) > MAX_PDF_BYTES:
+        raise ValueError("PDF file is larger than 35MB.")
+    if not file_bytes.startswith(b"%PDF"):
+        raise ValueError("Selected file is not a valid PDF.")
+
+    result = parse_paper(file_bytes, resolved.name)
+    result = enrich_paper_result(result)
+    result["local_file_path"] = str(resolved)
+    result["pdf_base64"] = base64.b64encode(file_bytes).decode("ascii")
+    result["file_size"] = len(file_bytes)
+    return result
 
 
 def download_pdf(url):
@@ -318,6 +380,12 @@ class Handler(SimpleHTTPRequestHandler):
             return
         if self.path == "/api/open-folder":
             self.handle_open_folder()
+            return
+        if self.path == "/api/select-local-papers":
+            self.handle_select_local_papers()
+            return
+        if self.path == "/api/paper-path":
+            self.handle_paper_path()
             return
 
         self.send_error(404, "Not found")

@@ -36,6 +36,8 @@ const paperOpenFolder = document.querySelector('[data-paper-open-folder]');
 const paperManageStatus = document.querySelector('[data-paper-manage-status]');
 const themeToggle = document.querySelector('[data-theme-toggle]');
 const langToggle = document.querySelector('[data-lang-toggle]');
+const settingsToggle = document.querySelector('[data-settings-toggle]');
+const settingsPanel = document.querySelector('[data-settings-panel]');
 const libraryManage = document.querySelector('[data-library-manage]');
 const managerPane = document.querySelector('[data-manager-pane]');
 const managerSearch = document.querySelector('[data-manager-search]');
@@ -59,7 +61,10 @@ const messages = {
   zh: {
     themeDark: '深色',
     themeLight: '浅色',
-    langToggle: 'EN',
+    appearance: '外观',
+    language: '语言',
+    langCurrent: '中文',
+    settings: '设置',
     manage: '管理',
     clear: '清空',
     importPdf: '导入 PDF',
@@ -88,6 +93,7 @@ const messages = {
     saveChanges: '保存修改',
     original: '原文',
     figures: '论文图片',
+    figuresLabel: '图片',
     library: 'Library',
     emptyTitle: '导入论文后开始整理。',
     emptyText: '标题、摘要、图片和原始 PDF 会保存在这个浏览器的本地论文库。',
@@ -124,7 +130,10 @@ const messages = {
   en: {
     themeDark: 'Dark',
     themeLight: 'Light',
-    langToggle: '中',
+    appearance: 'Appearance',
+    language: 'Language',
+    langCurrent: 'English',
+    settings: 'Settings',
     manage: 'Manage',
     clear: 'Clear',
     importPdf: 'Import PDF',
@@ -153,6 +162,7 @@ const messages = {
     saveChanges: 'Save changes',
     original: 'Original',
     figures: 'Paper figures',
+    figuresLabel: 'Figures',
     library: 'Library',
     emptyTitle: 'Import papers to start organizing.',
     emptyText: 'Titles, abstracts, figures, and original PDFs are saved in this browser library.',
@@ -223,12 +233,18 @@ const setPlaceholder = (selector, value) => {
 
 const applyTheme = () => {
   document.documentElement.dataset.theme = currentTheme;
-  themeToggle.textContent = currentTheme === 'dark' ? t('themeLight') : t('themeDark');
+  const themeValue = themeToggle?.querySelector('strong');
+  if (themeValue) {
+    themeValue.textContent = currentTheme === 'dark' ? t('themeLight') : t('themeDark');
+  }
 };
 
 const applyLanguage = () => {
   document.documentElement.lang = currentLang === 'en' ? 'en' : 'zh-CN';
-  langToggle.textContent = t('langToggle');
+  setText('[data-settings-toggle]', t('settings'));
+  setText('[data-theme-toggle] span', t('appearance'));
+  setText('[data-lang-toggle] span', t('language'));
+  setText('[data-lang-toggle] strong', t('langCurrent'));
   setText('[data-library-manage]', t('manage'));
   setText('[data-paper-clear]', t('clear'));
   setText('.file-drop span', t('importPdf'));
@@ -258,6 +274,7 @@ const applyLanguage = () => {
   setPlaceholder('[data-paper-category]', t('uncategorized'));
   setText('.editor-card .field:nth-of-type(3) span', t('abstract'));
   setText('.source-card .eyebrow', t('original'));
+  setText('.figures-section .eyebrow', t('figuresLabel'));
   setText('.figures-section h2', t('figures'));
   setText('[data-empty-state] .eyebrow', t('library'));
   setText('[data-empty-state] h1', t('emptyTitle'));
@@ -818,6 +835,19 @@ const setImportFiles = (files) => {
 
 paperFile?.addEventListener('change', () => setImportFiles(paperFile.files || []));
 paperFolder?.addEventListener('change', () => setImportFiles(paperFolder.files || []));
+
+settingsToggle?.addEventListener('click', () => {
+  settingsPanel.hidden = !settingsPanel.hidden;
+});
+
+document.addEventListener('click', (event) => {
+  if (!settingsPanel || settingsPanel.hidden) {
+    return;
+  }
+  if (!event.target.closest('.sidebar-settings')) {
+    settingsPanel.hidden = true;
+  }
+});
 
 themeToggle?.addEventListener('click', () => {
   currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
