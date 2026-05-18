@@ -14,45 +14,52 @@
           <span class="brand-mark"></span>
           Paper Library
         </a>
-        <div class="sidebar-actions">
-          <button class="text-button" type="button" data-library-manage>管理</button>
-          <button class="text-button danger" type="button" data-paper-clear>清空</button>
-        </div>
       </div>
 
-      <form class="import-box" data-paper-form>
-        <label class="file-drop" for="paper-file">
-          <span>导入 PDF</span>
-          <strong data-paper-file-name>选择多个论文文件</strong>
-        </label>
-        <input id="paper-file" name="paper" type="file" accept="application/pdf,.pdf" multiple data-paper-file>
-        <label class="secondary-drop" for="paper-folder">导入文件夹</label>
-        <input id="paper-folder" name="folder" type="file" accept="application/pdf,.pdf" webkitdirectory multiple data-paper-folder>
-        <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
-        <p class="status" data-paper-status>论文库准备就绪。</p>
-      </form>
+      <section class="sidebar-module import-module" aria-label="导入论文">
+        <div class="module-head">
+          <h2 data-import-module-title>导入论文</h2>
+        </div>
+        <form class="import-box" data-paper-form>
+          <label class="file-drop" for="paper-file">
+            <span>导入 PDF</span>
+            <strong data-paper-file-name>选择多个论文文件</strong>
+          </label>
+          <input id="paper-file" name="paper" type="file" accept="application/pdf,.pdf" multiple data-paper-file>
+          <label class="secondary-drop" for="paper-folder">导入文件夹</label>
+          <input id="paper-folder" name="folder" type="file" accept="application/pdf,.pdf" webkitdirectory multiple data-paper-folder>
+          <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
+        </form>
 
-      <section class="text-import-box" aria-label="从文本导入论文">
-        <textarea rows="5" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
-        <button class="secondary-button" type="button" data-text-import>识别链接并导入</button>
+        <div class="text-import-box" aria-label="从文本导入论文">
+          <textarea rows="4" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
+          <button class="secondary-button" type="button" data-text-import>识别链接并导入</button>
+        </div>
+        <p class="status module-status" data-paper-status>论文库准备就绪。</p>
       </section>
 
-      <div class="library-toolbar">
-        <input type="search" placeholder="搜索标题、摘要或文件名" data-paper-search>
-        <span data-paper-count>0 篇</span>
-      </div>
-      <select class="category-filter" data-category-filter aria-label="按分类筛选">
-        <option value="">全部分类</option>
-      </select>
-      <div class="bulk-bar" data-bulk-bar hidden>
-        <span data-selected-count>已选 0 篇</span>
-        <input type="text" placeholder="设置分类" data-bulk-category>
-        <button class="secondary-button" type="button" data-bulk-apply>应用</button>
-        <button class="secondary-button" type="button" data-select-visible>全选当前</button>
-        <button class="secondary-button" type="button" data-clear-selection>取消选择</button>
-        <button class="secondary-button danger" type="button" data-bulk-delete>删除</button>
-      </div>
-      <div class="paper-list" data-paper-list></div>
+      <section class="sidebar-module manage-module" aria-label="管理论文">
+        <div class="module-head">
+          <h2 data-manage-module-title>管理论文</h2>
+          <button class="text-button" type="button" data-library-manage>打开管理</button>
+        </div>
+        <div class="library-toolbar">
+          <input type="search" placeholder="搜索标题、摘要或文件名" data-paper-search>
+          <span data-paper-count>0 篇</span>
+        </div>
+        <select class="category-filter" data-category-filter aria-label="按分类筛选">
+          <option value="">全部分类</option>
+        </select>
+        <div class="bulk-bar" data-bulk-bar hidden>
+          <span data-selected-count>已选 0 篇</span>
+          <input type="text" placeholder="设置分类" data-bulk-category>
+          <button class="secondary-button" type="button" data-bulk-apply>应用</button>
+          <button class="secondary-button" type="button" data-select-visible>全选当前</button>
+          <button class="secondary-button" type="button" data-clear-selection>取消选择</button>
+          <button class="secondary-button danger" type="button" data-bulk-delete>删除</button>
+        </div>
+        <div class="paper-list" data-paper-list></div>
+      </section>
 
       <div class="sidebar-settings">
         <button class="settings-button" type="button" data-settings-toggle>设置</button>
@@ -64,6 +71,10 @@
           <button class="settings-row" type="button" data-lang-toggle>
             <span>语言</span>
             <strong>中文</strong>
+          </button>
+          <button class="settings-row danger" type="button" data-paper-clear>
+            <span>清空论文库</span>
+            <strong>清空</strong>
           </button>
         </div>
       </div>

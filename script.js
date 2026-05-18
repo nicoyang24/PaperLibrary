@@ -65,6 +65,10 @@ const messages = {
     language: '语言',
     langCurrent: '中文',
     settings: '设置',
+    importModule: '导入论文',
+    manageModule: '管理论文',
+    openManager: '打开管理',
+    clearLibrary: '清空论文库',
     manage: '管理',
     clear: '清空',
     importPdf: '导入 PDF',
@@ -134,6 +138,10 @@ const messages = {
     language: 'Language',
     langCurrent: 'English',
     settings: 'Settings',
+    importModule: 'Import Papers',
+    manageModule: 'Manage Papers',
+    openManager: 'Open Manager',
+    clearLibrary: 'Clear library',
     manage: 'Manage',
     clear: 'Clear',
     importPdf: 'Import PDF',
@@ -245,8 +253,11 @@ const applyLanguage = () => {
   setText('[data-theme-toggle] span', t('appearance'));
   setText('[data-lang-toggle] span', t('language'));
   setText('[data-lang-toggle] strong', t('langCurrent'));
-  setText('[data-library-manage]', t('manage'));
-  setText('[data-paper-clear]', t('clear'));
+  setText('[data-import-module-title]', t('importModule'));
+  setText('[data-manage-module-title]', t('manageModule'));
+  setText('[data-library-manage]', t('openManager'));
+  setText('[data-paper-clear] span', t('clearLibrary'));
+  setText('[data-paper-clear] strong', t('clear'));
   setText('.file-drop span', t('importPdf'));
   if (selectedImportFiles.length === 0) {
     paperFileName.textContent = t('choosePapers');

@@ -160,6 +160,11 @@ button {
   font-size: 13px;
 }
 
+.settings-row.danger span,
+.settings-row.danger strong {
+  color: var(--danger);
+}
+
 .brand {
   display: inline-flex;
   align-items: center;
@@ -181,6 +186,7 @@ button {
 
 .import-box,
 .text-import-box,
+.sidebar-module,
 .editor-card,
 .source-card,
 .paper-figure {
@@ -189,18 +195,57 @@ button {
   background: var(--panel);
 }
 
-.import-box {
+.sidebar-module {
   display: grid;
   gap: 10px;
   padding: 12px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+}
+
+.module-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 28px;
+}
+
+.module-head h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.module-head .text-button {
+  min-height: 28px;
+  padding: 0 8px;
+}
+
+.import-module {
+  gap: 12px;
+}
+
+.manage-module {
+  grid-template-rows: auto auto auto auto minmax(0, 1fr);
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.import-box {
+  display: grid;
+  gap: 10px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
 }
 
 .text-import-box {
   display: grid;
   gap: 10px;
-  padding: 10px;
-  background: var(--field);
+  padding: 0;
+  border: 0;
+  background: transparent;
 }
 
 .text-import-box textarea {
@@ -218,6 +263,10 @@ button {
 
 .text-import-box .secondary-button {
   width: 100%;
+}
+
+.module-status {
+  min-height: 18px;
 }
 
 .file-drop {
