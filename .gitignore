@@ -1,0 +1,7 @@
+.env
+__pycache__/
+.argos/
+.venv/
+build/
+dist/
+*.spec.bak

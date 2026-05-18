@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Paper Library</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <aside class="sidebar" aria-label="论文库">
+      <div class="sidebar-head">
+        <a class="brand" href="#" aria-label="Paper Library 首页">
+          <span class="brand-mark"></span>
+          Paper Library
+        </a>
+        <button class="text-button danger" type="button" data-paper-clear>清空</button>
+      </div>
+
+      <form class="import-box" data-paper-form>
+        <label class="file-drop" for="paper-file">
+          <span>导入 PDF</span>
+          <strong data-paper-file-name>选择多个论文文件</strong>
+        </label>
+        <input id="paper-file" name="paper" type="file" accept="application/pdf,.pdf" multiple data-paper-file>
+        <label class="secondary-drop" for="paper-folder">导入文件夹</label>
+        <input id="paper-folder" name="folder" type="file" accept="application/pdf,.pdf" webkitdirectory multiple data-paper-folder>
+        <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
+        <p class="status" data-paper-status>论文库准备就绪。</p>
+      </form>
+
+      <div class="library-toolbar">
+        <input type="search" placeholder="搜索标题、摘要或文件名" data-paper-search>
+        <span data-paper-count>0 篇</span>
+      </div>
+      <select class="category-filter" data-category-filter aria-label="按分类筛选">
+        <option value="">全部分类</option>
+      </select>
+      <div class="bulk-bar" data-bulk-bar hidden>
+        <span data-selected-count>已选 0 篇</span>
+        <input type="text" placeholder="设置分类" data-bulk-category>
+        <button class="secondary-button" type="button" data-bulk-apply>应用</button>
+        <button class="secondary-button" type="button" data-select-visible>全选当前</button>
+        <button class="secondary-button" type="button" data-clear-selection>取消选择</button>
+        <button class="secondary-button danger" type="button" data-bulk-delete>删除</button>
+      </div>
+      <div class="paper-list" data-paper-list></div>
+    </aside>
+
+    <section class="detail-pane" data-paper-detail hidden>
+      <header class="detail-head">
+        <div>
+          <p class="eyebrow">当前论文</p>
+          <h1 data-detail-heading>未选择论文</h1>
+          <p class="meta" data-paper-meta></p>
+        </div>
+        <div class="detail-actions">
+          <button class="secondary-button" type="button" data-paper-open>打开 PDF</button>
+          <button class="secondary-button danger" type="button" data-paper-delete>删除</button>
+        </div>
+      </header>
+
+      <section class="editor-grid">
+        <article class="editor-card">
+          <label class="field">
+            <span>标题</span>
+            <input type="text" data-paper-title>
+          </label>
+          <label class="field">
+            <span>分类</span>
+            <input type="text" list="category-options" placeholder="未分类" data-paper-category>
+          </label>
+          <datalist id="category-options" data-category-options></datalist>
+          <label class="field">
+            <span>摘要</span>
+            <textarea rows="13" data-paper-abstract></textarea>
+          </label>
+          <button class="primary-button" type="button" data-paper-save>保存修改</button>
+          <p class="status" data-paper-manage-status></p>
+        </article>
+
+        <article class="source-card">
+          <p class="eyebrow">原文</p>
+          <h2 data-paper-original-title></h2>
+          <p data-paper-original-abstract></p>
+        </article>
+      </section>
+
+      <section class="figures-section">
+        <div class="section-title">
+          <p class="eyebrow">Figures</p>
+          <h2>论文图片</h2>
+        </div>
+        <div class="paper-gallery" data-paper-gallery aria-label="论文图片"></div>
+      </section>
+    </section>
+
+    <section class="empty-state" data-empty-state>
+      <p class="eyebrow">Library</p>
+      <h1>导入论文后开始整理。</h1>
+      <p>标题、摘要、图片和原始 PDF 会保存在这个浏览器的本地论文库。</p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
