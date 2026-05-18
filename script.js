@@ -94,7 +94,7 @@ const messages = {
     original: '原文',
     figures: '论文图片',
     figuresLabel: '图片',
-    library: 'Library',
+    library: '论文库',
     emptyTitle: '导入论文后开始整理。',
     emptyText: '标题、摘要、图片和原始 PDF 会保存在这个浏览器的本地论文库。',
     managerTitle: '论文库管理',
