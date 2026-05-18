@@ -5,6 +5,7 @@ const paperFileName = document.querySelector('[data-paper-file-name]');
 const paperSubmit = document.querySelector('[data-paper-submit]');
 const paperStatus = document.querySelector('[data-paper-status]');
 const paperText = document.querySelector('[data-paper-text]');
+const linkDetect = document.querySelector('[data-link-detect]');
 const paperList = document.querySelector('[data-paper-list]');
 const paperCount = document.querySelector('[data-paper-count]');
 const paperSearch = document.querySelector('[data-paper-search]');
@@ -65,7 +66,9 @@ const messages = {
     manage: '管理',
     clear: '清空',
     importPdf: '导入 PDF',
+    importPdfFile: '导入 PDF 文件',
     importLinks: '粘贴论文链接',
+    detectLinks: '识别链接并下载',
     choosePapers: '选择多个论文文件',
     importFolder: '导入文件夹',
     parseImport: '解析并入库',
@@ -139,7 +142,9 @@ const messages = {
     manage: 'Manage',
     clear: 'Clear',
     importPdf: 'Import PDF',
+    importPdfFile: 'Import PDF files',
     importLinks: 'Paste paper links',
+    detectLinks: 'Detect links',
     choosePapers: 'Choose paper files',
     importFolder: 'Import folder',
     parseImport: 'Parse and save',
@@ -204,6 +209,8 @@ const messages = {
 let currentPaperId = null;
 let lastPdfUrl = null;
 let selectedImportFiles = [];
+let detectedImportLinks = [];
+let detectedImportText = '';
 let isManagerOpen = false;
 let managerPapers = [];
 let managerFilteredPapers = [];
@@ -251,12 +258,13 @@ const applyLanguage = () => {
   setText('[data-library-manage]', t('openManager'));
   setText('[data-paper-clear] span', t('clearLibrary'));
   setText('[data-paper-clear] strong', t('clear'));
-  setText('.file-drop span', t('importPdf'));
+  setText('[data-paper-file-button]', t('importPdfFile'));
   if (selectedImportFiles.length === 0) {
     paperFileName.textContent = t('choosePapers');
   }
-  setText('.secondary-drop', t('importFolder'));
+  setText('[data-paper-folder-button]', t('importFolder'));
   setText('.link-drop span', t('importLinks'));
+  setText('[data-link-detect]', t('detectLinks'));
   setText('[data-paper-submit]', t('parseImport'));
   if (!paperStatus.textContent || paperStatus.textContent.includes('准备就绪') || paperStatus.textContent.includes('ready')) {
     setStatus(t('ready'));
@@ -830,7 +838,12 @@ const renderManagerRows = () => {
     categoryCell.textContent = getCategory(paper);
 
     const fileCell = document.createElement('td');
-    fileCell.textContent = paper.file_name || '-';
+    fileCell.className = 'file-cell';
+    fileCell.title = paper.file_name || '';
+    const fileName = document.createElement('span');
+    fileName.className = 'file-name';
+    fileName.textContent = paper.file_name || '-';
+    fileCell.append(fileName);
 
     const pageCell = document.createElement('td');
     pageCell.textContent = paper.page_count || '-';
@@ -937,7 +950,7 @@ const showManager = async () => {
 const setImportFiles = (files) => {
   selectedImportFiles = [...files].filter((file) => file.name.toLowerCase().endsWith('.pdf'));
   if (selectedImportFiles.length === 0) {
-    paperFileName.textContent = '选择多个论文文件';
+    paperFileName.textContent = t('choosePapers');
     setStatus('没有选择 PDF。', true);
     return;
   }
@@ -950,6 +963,22 @@ const setImportFiles = (files) => {
 
 paperFile?.addEventListener('change', () => setImportFiles(paperFile.files || []));
 paperFolder?.addEventListener('change', () => setImportFiles(paperFolder.files || []));
+
+paperText?.addEventListener('input', () => {
+  detectedImportLinks = [];
+  detectedImportText = '';
+});
+
+linkDetect?.addEventListener('click', () => {
+  const text = paperText.value.trim();
+  detectedImportLinks = extractPaperLinks(text);
+  detectedImportText = text;
+  if (detectedImportLinks.length === 0) {
+    setStatus('没有识别到 PDF 链接。请粘贴包含 .pdf 或 arXiv abs 链接的文本。', true);
+    return;
+  }
+  setStatus(`已识别 ${detectedImportLinks.length} 个 PDF 链接，点击“解析并入库”开始下载解析。`);
+});
 
 settingsToggle?.addEventListener('click', () => {
   settingsPanel.hidden = !settingsPanel.hidden;
@@ -1157,7 +1186,7 @@ paperForm?.addEventListener('submit', async (event) => {
 
   const files = selectedImportFiles;
   const text = paperText.value.trim();
-  const links = extractPaperLinks(text);
+  const links = text && text === detectedImportText ? detectedImportLinks : extractPaperLinks(text);
   if (files.length === 0 && links.length === 0) {
     setStatus('请先选择 PDF、文件夹，或粘贴包含 PDF/arXiv 链接的文本。', true);
     return;
@@ -1167,6 +1196,9 @@ paperForm?.addEventListener('submit', async (event) => {
   paperFile.disabled = true;
   paperFolder.disabled = true;
   paperText.disabled = true;
+  if (linkDetect) {
+    linkDetect.disabled = true;
+  }
 
   try {
     let imported = 0;
@@ -1213,6 +1245,9 @@ paperForm?.addEventListener('submit', async (event) => {
     paperFile.disabled = false;
     paperFolder.disabled = false;
     paperText.disabled = false;
+    if (linkDetect) {
+      linkDetect.disabled = false;
+    }
   }
 });
 

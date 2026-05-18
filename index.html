@@ -21,17 +21,16 @@
           <h2 data-import-module-title>导入论文</h2>
         </div>
         <form class="import-box" data-paper-form>
-          <label class="file-drop" for="paper-file">
-            <span>导入 PDF</span>
-            <strong data-paper-file-name>选择多个论文文件</strong>
-          </label>
+          <label class="secondary-drop" for="paper-file" data-paper-file-button>导入 PDF 文件</label>
           <input id="paper-file" name="paper" type="file" accept="application/pdf,.pdf" multiple data-paper-file>
-          <label class="secondary-drop" for="paper-folder">导入文件夹</label>
+          <label class="secondary-drop" for="paper-folder" data-paper-folder-button>导入文件夹</label>
           <input id="paper-folder" name="folder" type="file" accept="application/pdf,.pdf" webkitdirectory multiple data-paper-folder>
+          <p class="source-summary" data-paper-file-name>未选择 PDF 文件</p>
           <label class="link-drop">
             <span>粘贴论文链接</span>
             <textarea rows="4" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
           </label>
+          <button class="secondary-button" type="button" data-link-detect>识别链接并下载</button>
           <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
         </form>
         <p class="status module-status" data-paper-status>论文库准备就绪。</p>

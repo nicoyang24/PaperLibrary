@@ -282,7 +282,7 @@ button {
   display: grid;
   align-content: center;
   width: 100%;
-  min-height: 56px;
+  min-height: 42px;
   border: 1px solid rgba(0, 113, 227, 0.18);
   border-radius: 8px;
   padding: 0 14px;
@@ -291,6 +291,17 @@ button {
   font-weight: 700;
   text-align: left;
   cursor: pointer;
+}
+
+.import-box > .secondary-button {
+  width: 100%;
+}
+
+.source-summary {
+  margin: -2px 2px 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 .file-drop span,
@@ -935,6 +946,20 @@ h1 {
   color: var(--muted);
   line-height: 1.35;
   -webkit-line-clamp: 1;
+}
+
+.file-cell {
+  vertical-align: middle;
+}
+
+.file-name {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 1.35;
+  word-break: normal;
 }
 
 .action-cell {
