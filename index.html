@@ -28,13 +28,12 @@
           <input id="paper-file" name="paper" type="file" accept="application/pdf,.pdf" multiple data-paper-file>
           <label class="secondary-drop" for="paper-folder">导入文件夹</label>
           <input id="paper-folder" name="folder" type="file" accept="application/pdf,.pdf" webkitdirectory multiple data-paper-folder>
+          <label class="link-drop">
+            <span>粘贴论文链接</span>
+            <textarea rows="4" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
+          </label>
           <button class="primary-button" type="submit" data-paper-submit>解析并入库</button>
         </form>
-
-        <div class="text-import-box" aria-label="从文本导入论文">
-          <textarea rows="4" placeholder="粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。" data-paper-text></textarea>
-          <button class="secondary-button" type="button" data-text-import>识别链接并导入</button>
-        </div>
         <p class="status module-status" data-paper-status>论文库准备就绪。</p>
       </section>
 

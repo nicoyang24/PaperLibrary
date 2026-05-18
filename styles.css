@@ -185,7 +185,6 @@ button {
 }
 
 .import-box,
-.text-import-box,
 .sidebar-module,
 .editor-card,
 .source-card,
@@ -240,15 +239,16 @@ button {
   box-shadow: none;
 }
 
-.text-import-box {
+.link-drop {
   display: grid;
-  gap: 10px;
-  padding: 0;
-  border: 0;
-  background: transparent;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field-soft);
 }
 
-.text-import-box textarea {
+.link-drop textarea {
   width: 100%;
   min-height: 104px;
   max-height: 190px;
@@ -259,10 +259,6 @@ button {
   background: var(--field-soft);
   line-height: 1.45;
   resize: vertical;
-}
-
-.text-import-box .secondary-button {
-  width: 100%;
 }
 
 .module-status {
@@ -283,19 +279,22 @@ button {
 }
 
 .secondary-drop {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  align-content: center;
   width: 100%;
-  min-height: 36px;
+  min-height: 56px;
   border: 1px solid rgba(0, 113, 227, 0.18);
   border-radius: 8px;
+  padding: 0 14px;
   color: var(--accent);
   background: var(--accent-soft);
+  font-weight: 700;
+  text-align: left;
   cursor: pointer;
 }
 
 .file-drop span,
+.link-drop span,
 .eyebrow,
 .field span {
   color: var(--accent);
@@ -609,7 +608,7 @@ h1 {
 .library-toolbar input:focus,
 .category-filter:focus,
 .bulk-bar input:focus,
-.text-import-box textarea:focus {
+.link-drop textarea:focus {
   outline: 2px solid rgba(0, 113, 227, 0.24);
   border-color: rgba(0, 113, 227, 0.46);
 }
@@ -1034,7 +1033,7 @@ h1 {
 }
 
 :root[data-theme="dark"] .import-box,
-:root[data-theme="dark"] .text-import-box,
+:root[data-theme="dark"] .link-drop,
 :root[data-theme="dark"] .editor-card,
 :root[data-theme="dark"] .source-card,
 :root[data-theme="dark"] .paper-figure,

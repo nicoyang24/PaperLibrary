@@ -5,7 +5,6 @@ const paperFileName = document.querySelector('[data-paper-file-name]');
 const paperSubmit = document.querySelector('[data-paper-submit]');
 const paperStatus = document.querySelector('[data-paper-status]');
 const paperText = document.querySelector('[data-paper-text]');
-const textImport = document.querySelector('[data-text-import]');
 const paperList = document.querySelector('[data-paper-list]');
 const paperCount = document.querySelector('[data-paper-count]');
 const paperSearch = document.querySelector('[data-paper-search]');
@@ -66,12 +65,12 @@ const messages = {
     manage: '管理',
     clear: '清空',
     importPdf: '导入 PDF',
+    importLinks: '粘贴论文链接',
     choosePapers: '选择多个论文文件',
     importFolder: '导入文件夹',
     parseImport: '解析并入库',
     ready: '论文库准备就绪。',
     textPlaceholder: '粘贴 ChatGPT、网页或笔记里的论文推荐文本，自动识别其中的 PDF 链接。',
-    textImport: '识别链接并导入',
     searchPlaceholder: '搜索标题、摘要或文件名',
     allCategories: '全部分类',
     selectedCount: (count) => `已选 ${count} 篇`,
@@ -140,12 +139,12 @@ const messages = {
     manage: 'Manage',
     clear: 'Clear',
     importPdf: 'Import PDF',
+    importLinks: 'Paste paper links',
     choosePapers: 'Choose paper files',
     importFolder: 'Import folder',
     parseImport: 'Parse and save',
     ready: 'Library is ready.',
     textPlaceholder: 'Paste paper recommendations from ChatGPT, webpages, or notes. PDF links will be detected automatically.',
-    textImport: 'Detect links and import',
     searchPlaceholder: 'Search title, abstract, or filename',
     allCategories: 'All categories',
     selectedCount: (count) => `${count} selected`,
@@ -257,12 +256,12 @@ const applyLanguage = () => {
     paperFileName.textContent = t('choosePapers');
   }
   setText('.secondary-drop', t('importFolder'));
+  setText('.link-drop span', t('importLinks'));
   setText('[data-paper-submit]', t('parseImport'));
   if (!paperStatus.textContent || paperStatus.textContent.includes('准备就绪') || paperStatus.textContent.includes('ready')) {
     setStatus(t('ready'));
   }
   setPlaceholder('[data-paper-text]', t('textPlaceholder'));
-  setText('[data-text-import]', t('textImport'));
   setPlaceholder('[data-paper-search]', t('searchPlaceholder'));
   setText('[data-paper-open]', t('openPdf'));
   setText('[data-paper-open-folder]', t('openFolder'));
@@ -1157,22 +1156,38 @@ paperForm?.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const files = selectedImportFiles;
-  if (files.length === 0) {
-    setStatus('请先选择 PDF 或文件夹。', true);
+  const text = paperText.value.trim();
+  const links = extractPaperLinks(text);
+  if (files.length === 0 && links.length === 0) {
+    setStatus('请先选择 PDF、文件夹，或粘贴包含 PDF/arXiv 链接的文本。', true);
     return;
   }
 
   paperSubmit.disabled = true;
   paperFile.disabled = true;
   paperFolder.disabled = true;
+  paperText.disabled = true;
 
   try {
     let imported = 0;
     let duplicates = 0;
     let lastImportedId = null;
+    const total = files.length + links.length;
+    let offset = 0;
 
     for (let index = 0; index < files.length; index += 1) {
-      const result = await importOneFile(files[index], index, files.length);
+      const result = await importOneFile(files[index], offset + index, total);
+      if (result.status === 'duplicate') {
+        duplicates += 1;
+      } else {
+        imported += 1;
+        lastImportedId = result.id;
+      }
+    }
+    offset += files.length;
+
+    for (let index = 0; index < links.length; index += 1) {
+      const result = await importOneUrl(links[index], offset + index, total);
       if (result.status === 'duplicate') {
         duplicates += 1;
       } else {
@@ -1197,49 +1212,6 @@ paperForm?.addEventListener('submit', async (event) => {
     paperSubmit.disabled = false;
     paperFile.disabled = false;
     paperFolder.disabled = false;
-  }
-});
-
-textImport?.addEventListener('click', async () => {
-  const text = paperText.value.trim();
-  const links = extractPaperLinks(text);
-  if (links.length === 0) {
-    setStatus('没有识别到 PDF 链接。请粘贴包含 .pdf 或 arXiv abs 链接的文本。', true);
-    return;
-  }
-
-  textImport.disabled = true;
-  paperText.disabled = true;
-
-  try {
-    let imported = 0;
-    let duplicates = 0;
-    let lastImportedId = null;
-
-    for (let index = 0; index < links.length; index += 1) {
-      const result = await importOneUrl(links[index], index, links.length);
-      if (result.status === 'duplicate') {
-        duplicates += 1;
-      } else {
-        imported += 1;
-        lastImportedId = result.id;
-      }
-    }
-
-    if (lastImportedId) {
-      await showPaper(lastImportedId);
-    } else {
-      await renderList();
-    }
-    setStatus(`文本导入完成：新增 ${imported} 篇，跳过重复 ${duplicates} 篇。`);
-  } catch (error) {
-    const rawMessage = error instanceof Error ? error.message : '文本导入失败。';
-    const message = rawMessage === 'Failed to fetch'
-      ? '无法连接本地解析服务。请先启动 PaperLibrary.exe，或运行 python server.py 后打开 http://localhost:8000。'
-      : rawMessage;
-    setStatus(message, true);
-  } finally {
-    textImport.disabled = false;
     paperText.disabled = false;
   }
 });
