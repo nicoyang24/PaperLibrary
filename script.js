@@ -11,13 +11,6 @@ const paperCount = document.querySelector('[data-paper-count]');
 const paperSearch = document.querySelector('[data-paper-search]');
 const categoryFilter = document.querySelector('[data-category-filter]');
 const categoryOptions = document.querySelector('[data-category-options]');
-const bulkBar = document.querySelector('[data-bulk-bar]');
-const selectedCount = document.querySelector('[data-selected-count]');
-const bulkCategory = document.querySelector('[data-bulk-category]');
-const bulkApply = document.querySelector('[data-bulk-apply]');
-const bulkDelete = document.querySelector('[data-bulk-delete]');
-const selectVisible = document.querySelector('[data-select-visible]');
-const clearSelection = document.querySelector('[data-clear-selection]');
 const paperDetail = document.querySelector('[data-paper-detail]');
 const emptyState = document.querySelector('[data-empty-state]');
 const detailHeading = document.querySelector('[data-detail-heading]');
@@ -210,8 +203,6 @@ const messages = {
 let currentPaperId = null;
 let lastPdfUrl = null;
 let selectedImportFiles = [];
-let visiblePaperIds = [];
-const selectedPaperIds = new Set();
 let isManagerOpen = false;
 let managerPapers = [];
 let managerFilteredPapers = [];
@@ -271,11 +262,6 @@ const applyLanguage = () => {
   setPlaceholder('[data-paper-text]', t('textPlaceholder'));
   setText('[data-text-import]', t('textImport'));
   setPlaceholder('[data-paper-search]', t('searchPlaceholder'));
-  setPlaceholder('[data-bulk-category]', t('bulkCategoryPlaceholder'));
-  setText('[data-bulk-apply]', t('apply'));
-  setText('[data-select-visible]', t('selectVisible'));
-  setText('[data-clear-selection]', t('cancelSelection'));
-  setText('[data-bulk-delete]', t('delete'));
   setText('[data-paper-open]', t('openPdf'));
   setText('[data-paper-open-folder]', t('openFolder'));
   setText('[data-paper-delete]', t('delete'));
@@ -659,8 +645,6 @@ async function renderList() {
   const category = categoryFilter.value;
   const categories = [...new Set(papers.map(getCategory))].sort((a, b) => a.localeCompare(b, 'zh-CN'));
   const visiblePapers = papers.filter((paper) => matchesQuery(paper, query) && matchesCategory(paper, category));
-  visiblePaperIds = visiblePapers.map((paper) => paper.id);
-
   paperCount.textContent = `${papers.length} 篇`;
   paperList.replaceChildren();
   categoryFilter.replaceChildren(new Option(t('allCategories'), ''));
@@ -672,14 +656,6 @@ async function renderList() {
     categoryOptions.append(option);
   });
   categoryFilter.value = categories.includes(category) ? category : '';
-  selectedPaperIds.forEach((id) => {
-    if (!papers.some((paper) => paper.id === id)) {
-      selectedPaperIds.delete(id);
-    }
-  });
-  bulkBar.hidden = selectedPaperIds.size === 0;
-  selectedCount.textContent = t('selectedCount', selectedPaperIds.size);
-
   if (visiblePapers.length === 0) {
     const empty = document.createElement('p');
     empty.className = 'list-empty';
@@ -698,11 +674,6 @@ async function renderList() {
     item.className = `paper-list-item${paper.id === currentPaperId ? ' is-active' : ''}`;
     item.dataset.paperId = paper.id;
 
-    const checkbox = document.createElement('input');
-    checkbox.type = 'checkbox';
-    checkbox.checked = selectedPaperIds.has(paper.id);
-    checkbox.dataset.selectPaper = paper.id;
-
     const openButton = document.createElement('button');
     openButton.type = 'button';
     openButton.dataset.openPaper = paper.id;
@@ -720,7 +691,7 @@ async function renderList() {
     meta.textContent = `${getCategory(paper)} · ${imported} · ${paper.page_count} 页`;
 
     openButton.append(title, meta);
-    item.append(checkbox, openButton);
+    item.append(openButton);
     paperList.append(item);
   });
 }
@@ -1243,17 +1214,6 @@ textImport?.addEventListener('click', async () => {
 });
 
 paperList?.addEventListener('click', async (event) => {
-  const checkbox = event.target.closest('[data-select-paper]');
-  if (checkbox) {
-    if (checkbox.checked) {
-      selectedPaperIds.add(checkbox.dataset.selectPaper);
-    } else {
-      selectedPaperIds.delete(checkbox.dataset.selectPaper);
-    }
-    await renderList();
-    return;
-  }
-
   const button = event.target.closest('[data-open-paper]');
   if (button) {
     await showPaper(button.dataset.openPaper);
@@ -1485,7 +1445,6 @@ paperDelete?.addEventListener('click', async () => {
 
 paperClear?.addEventListener('click', async () => {
   await clearPapers();
-  selectedPaperIds.clear();
   managerSelectedIds.clear();
   currentPaperId = null;
   paperDetail.hidden = true;
@@ -1496,65 +1455,6 @@ paperClear?.addEventListener('click', async () => {
     await loadManager();
   }
   setStatus('论文库已清空。');
-});
-
-bulkApply?.addEventListener('click', async () => {
-  const category = bulkCategory.value.trim();
-  if (!category || selectedPaperIds.size === 0) {
-    return;
-  }
-
-  for (const id of selectedPaperIds) {
-    const paper = await getPaper(id);
-    if (paper) {
-      paper.category = category;
-      paper.updatedAt = Date.now();
-      await savePaper(paper);
-    }
-  }
-  bulkCategory.value = '';
-  await renderList();
-  if (isManagerOpen) {
-    await loadManager();
-  }
-  setStatus(`已将 ${selectedPaperIds.size} 篇论文归类为「${category}」。`);
-});
-
-bulkDelete?.addEventListener('click', async () => {
-  if (selectedPaperIds.size === 0) {
-    return;
-  }
-
-  const deleted = selectedPaperIds.size;
-  for (const id of selectedPaperIds) {
-    await removePaper(id);
-  }
-  selectedPaperIds.clear();
-  managerSelectedIds.clear();
-  const papers = await getPapers();
-  if (papers[0]) {
-    await showPaper(papers[0].id);
-  } else {
-    currentPaperId = null;
-    paperDetail.hidden = true;
-    emptyState.hidden = isManagerOpen;
-    managerPane.hidden = !isManagerOpen;
-    await renderList();
-    if (isManagerOpen) {
-      await loadManager();
-    }
-  }
-  setStatus(`已删除 ${deleted} 篇论文。`);
-});
-
-selectVisible?.addEventListener('click', async () => {
-  visiblePaperIds.forEach((id) => selectedPaperIds.add(id));
-  await renderList();
-});
-
-clearSelection?.addEventListener('click', async () => {
-  selectedPaperIds.clear();
-  await renderList();
 });
 
 paperGallery?.addEventListener('click', async (event) => {

@@ -449,8 +449,8 @@ button:disabled {
 
 .paper-list-item {
   display: grid;
-  grid-template-columns: 18px minmax(0, 1fr);
-  gap: 11px;
+  grid-template-columns: 1fr;
+  gap: 0;
   align-items: start;
   width: 100%;
   min-height: 72px;
@@ -463,16 +463,10 @@ button:disabled {
   transition: border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
 }
 
-.paper-list-item input[type="checkbox"] {
-  width: 16px;
-  height: 16px;
-  margin: 2px 0 0;
-  accent-color: var(--accent);
-}
-
 .paper-list-item button {
   display: grid;
   gap: 6px;
+  width: 100%;
   min-width: 0;
   padding: 0;
   border: 0;
