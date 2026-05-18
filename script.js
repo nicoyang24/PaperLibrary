@@ -27,6 +27,7 @@ const paperCategory = document.querySelector('[data-paper-category]');
 const paperAbstract = document.querySelector('[data-paper-abstract]');
 const paperOriginalTitle = document.querySelector('[data-paper-original-title]');
 const paperOriginalAbstract = document.querySelector('[data-paper-original-abstract]');
+const paperBibliography = document.querySelector('[data-paper-bibliography]');
 const paperGallery = document.querySelector('[data-paper-gallery]');
 const paperSave = document.querySelector('[data-paper-save]');
 const paperDelete = document.querySelector('[data-paper-delete]');
@@ -388,6 +389,16 @@ const getPaperSummaries = async () => {
         abstract: paper.abstract,
         original_title: paper.original_title,
         original_abstract: paper.original_abstract,
+        authors: paper.authors || [],
+        year: paper.year,
+        doi: paper.doi,
+        arxiv_id: paper.arxiv_id,
+        publication: paper.publication,
+        publisher: paper.publisher,
+        keywords: paper.keywords || [],
+        reference_count: paper.reference_count,
+        metadata_source: paper.metadata_source,
+        metadata_error: paper.metadata_error,
         file_name: paper.file_name,
         source_url: paper.source_url,
         local_file_path: paper.local_file_path,
@@ -483,6 +494,13 @@ const matchesQuery = (paper, query) => {
     paper.abstract,
     paper.original_title,
     paper.original_abstract,
+    ...(paper.authors || []),
+    ...(paper.keywords || []),
+    paper.doi,
+    paper.arxiv_id,
+    paper.year,
+    paper.publication,
+    paper.publisher,
     paper.file_name,
     getCategory(paper),
   ].join(' ').toLowerCase();
@@ -524,6 +542,82 @@ const renderGallery = (images) => {
   });
 };
 
+const metadataLabels = {
+  zh: {
+    authors: '\u4f5c\u8005',
+    year: '\u5e74\u4efd',
+    doi: 'DOI',
+    arxiv: 'arXiv',
+    publication: '\u671f\u520a / \u4f1a\u8bae',
+    publisher: '\u51fa\u7248\u65b9',
+    keywords: '\u5173\u952e\u8bcd',
+    references: '\u53c2\u8003\u6587\u732e',
+    source: '\u5143\u6570\u636e\u6765\u6e90',
+  },
+  en: {
+    authors: 'Authors',
+    year: 'Year',
+    doi: 'DOI',
+    arxiv: 'arXiv',
+    publication: 'Venue',
+    publisher: 'Publisher',
+    keywords: 'Keywords',
+    references: 'References',
+    source: 'Metadata source',
+  },
+};
+
+const joinPeople = (people = []) => people.filter(Boolean).join(', ');
+
+const metadataValue = (value) => {
+  if (Array.isArray(value)) {
+    return value.filter(Boolean).join(', ');
+  }
+  return value || '';
+};
+
+const paperMetadataRows = (paper) => {
+  const labels = metadataLabels[currentLang] || metadataLabels.zh;
+  return [
+    [labels.authors, joinPeople(paper.authors || [])],
+    [labels.year, paper.year],
+    [labels.doi, paper.doi],
+    [labels.arxiv, paper.arxiv_id],
+    [labels.publication, paper.publication],
+    [labels.publisher, paper.publisher],
+    [labels.keywords, metadataValue(paper.keywords || [])],
+    [labels.references, paper.reference_count ? String(paper.reference_count) : ''],
+    [labels.source, paper.metadata_source],
+  ].filter(([, value]) => value);
+};
+
+const renderBibliography = (paper) => {
+  if (!paperBibliography) {
+    return;
+  }
+  paperBibliography.replaceChildren();
+  paperMetadataRows(paper).forEach(([label, value]) => {
+    const term = document.createElement('dt');
+    term.textContent = label;
+    const detail = document.createElement('dd');
+    detail.textContent = value;
+    paperBibliography.append(term, detail);
+  });
+};
+
+const paperMetaLine = (paper) => {
+  const parts = [
+    getCategory(paper),
+    paper.year,
+    joinPeople(paper.authors || []),
+    paper.file_name,
+    `${paper.page_count} \u9875`,
+    `${paper.images?.length || 0} \u5f20\u56fe\u7247`,
+    formatBytes(paper.file_size),
+  ];
+  return parts.filter(Boolean).join(' \u00b7 ');
+};
+
 const showPaper = async (id) => {
   const paper = await getPaper(id);
   if (!paper) {
@@ -544,7 +638,8 @@ const showPaper = async (id) => {
   paperAbstract.value = paper.abstract || '未识别到摘要。';
   paperOriginalTitle.textContent = paper.original_title || paper.title || '未识别到标题';
   paperOriginalAbstract.textContent = paper.original_abstract || paper.abstract || '未识别到摘要。';
-  paperMeta.textContent = `${getCategory(paper)} · ${paper.file_name} · ${paper.page_count} 页 · ${paper.images.length} 张图片 · ${formatBytes(paper.file_size)}`;
+  paperMeta.textContent = paperMetaLine(paper);
+  renderBibliography(paper);
   renderGallery(paper.images);
 
   const note = paper.translated
@@ -652,6 +747,13 @@ const managerMatchesQuery = (paper, query) => {
     paper.abstract,
     paper.original_title,
     paper.original_abstract,
+    ...(paper.authors || []),
+    ...(paper.keywords || []),
+    paper.doi,
+    paper.arxiv_id,
+    paper.year,
+    paper.publication,
+    paper.publisher,
     paper.file_name,
     paper.source_url,
     getCategory(paper),
@@ -739,7 +841,8 @@ const renderManagerRows = () => {
     const title = document.createElement('strong');
     title.textContent = paper.title || paper.original_title || paper.file_name || t('noPaperSelected');
     const subtitle = document.createElement('span');
-    subtitle.textContent = paper.original_title && paper.original_title !== paper.title ? paper.original_title : paper.source_url || '';
+    const parsedMeta = [paper.year, joinPeople(paper.authors || []), paper.doi || paper.arxiv_id].filter(Boolean).join(' · ');
+    subtitle.textContent = parsedMeta || (paper.original_title && paper.original_title !== paper.title ? paper.original_title : paper.source_url || '');
     titleCell.append(title, subtitle);
 
     const categoryCell = document.createElement('td');

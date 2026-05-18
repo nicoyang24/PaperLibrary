@@ -9,7 +9,7 @@ import sys
 import webbrowser
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import quote, unquote, urlparse
 from urllib.request import Request, urlopen
 
 import fitz
@@ -111,6 +111,83 @@ def clean_text(text):
     return re.sub(r"\s+", " ", text or "").strip()
 
 
+def strip_markup(text):
+    return clean_text(re.sub(r"<[^>]+>", " ", text or ""))
+
+
+def first_pages_text(document, limit=6):
+    return "\n".join(document[index].get_text("text") for index in range(min(limit, document.page_count)))
+
+
+def extract_doi(text):
+    match = re.search(r"\b10\.\d{4,9}/[-._;()/:A-Z0-9]+", text or "", re.I)
+    if not match:
+        return ""
+    return match.group(0).rstrip(".,;:)").lower()
+
+
+def extract_arxiv_id(text):
+    match = re.search(
+        r"\barxiv\s*[:：]\s*([0-9]{4}\.[0-9]{4,5}(?:v\d+)?|[a-z\-]+(?:\.[A-Z]{2})?/\d{7}(?:v\d+)?)",
+        text or "",
+        re.I,
+    )
+    return match.group(1) if match else ""
+
+
+def split_metadata_people(value):
+    value = clean_text(value)
+    if not value:
+        return []
+    parts = re.split(r"\s*(?:;|\band\b|、)\s*", value, flags=re.I)
+    return [clean_text(part) for part in parts if clean_text(part)]
+
+
+def extract_keywords(text):
+    match = re.search(
+        r"(?:keywords?|index terms|关键词)\s*[:：-]\s*(.{8,360}?)(?=(?:\n\s*\n|\n\s*(?:1\.?\s+)?(?:introduction|abstract|引言)\b))",
+        text or "",
+        re.I | re.S,
+    )
+    if not match:
+        match = re.search(r"(?:keywords?|index terms|关键词)\s*[:：-]\s*([^\n]{8,360})", text or "", re.I)
+    if not match:
+        return []
+    raw_keywords = clean_text(match.group(1))
+    keywords = re.split(r"\s*(?:,|;|，|；|\u2022|\|)\s*", raw_keywords)
+    return [keyword for keyword in (clean_text(item).strip(".") for item in keywords) if 2 <= len(keyword) <= 80][:12]
+
+
+def extract_year(text):
+    years = [int(item) for item in re.findall(r"\b(?:19|20)\d{2}\b", text or "")]
+    years = [year for year in years if 1950 <= year <= 2035]
+    return min(years) if years else ""
+
+
+def extract_reference_count(text):
+    match = re.search(r"\n\s*(?:references|bibliography|参考文献)\s*\n(.+)$", text or "", re.I | re.S)
+    if not match:
+        return 0
+    refs = re.findall(r"(?:^|\n)\s*(?:\[\d+\]|\d+[\).])\s+", match.group(1))
+    return len(refs)
+
+
+def extract_paper_metadata(document):
+    text = first_pages_text(document)
+    full_text_tail = "\n".join(document[index].get_text("text") for index in range(document.page_count))
+    metadata = document.metadata or {}
+    return {
+        "doi": extract_doi(text),
+        "arxiv_id": extract_arxiv_id(text),
+        "authors": split_metadata_people(metadata.get("author", "")),
+        "year": extract_year(text),
+        "keywords": extract_keywords(text),
+        "reference_count": extract_reference_count(full_text_tail),
+        "metadata_source": "pdf",
+        "metadata_error": "",
+    }
+
+
 def extract_title(document):
     metadata_title = clean_text(document.metadata.get("title", ""))
     if metadata_title and len(metadata_title) > 6 and not metadata_title.lower().endswith(".pdf"):
@@ -198,18 +275,85 @@ def parse_paper(file_bytes, file_name):
     try:
         if document.page_count == 0:
             raise ValueError("PDF 没有可读取的页面。")
+        metadata = extract_paper_metadata(document)
         return {
             "file_name": file_name,
             "page_count": document.page_count,
             "title": extract_title(document),
             "abstract": extract_abstract(document),
             "images": extract_images(document),
+            **metadata,
         }
     finally:
         document.close()
 
 
+def crossref_year(message):
+    for key in ("published-print", "published-online", "published", "created", "issued"):
+        date_parts = message.get(key, {}).get("date-parts", [])
+        if date_parts and date_parts[0]:
+            return date_parts[0][0]
+    return ""
+
+
+def crossref_authors(message):
+    authors = []
+    for author in message.get("author", [])[:20]:
+        name = clean_text(" ".join(part for part in [author.get("given", ""), author.get("family", "")] if part))
+        if name:
+            authors.append(name)
+    return authors
+
+
+def fetch_crossref_metadata(doi):
+    if not doi:
+        return {}
+    url = f"https://api.crossref.org/works/{quote(doi, safe='')}"
+    request = Request(
+        url,
+        headers={
+            "Accept": "application/json",
+            "User-Agent": "PaperLibrary/1.0 (mailto:paperlibrary.local@example.com)",
+        },
+    )
+    with urlopen(request, timeout=5) as response:
+        payload = json.loads(response.read().decode("utf-8"))
+    message = payload.get("message", {})
+    container = message.get("container-title") or []
+    return {
+        "title": clean_text((message.get("title") or [""])[0]),
+        "abstract": strip_markup(message.get("abstract", "")),
+        "authors": crossref_authors(message),
+        "year": crossref_year(message),
+        "publication": clean_text(container[0] if container else ""),
+        "publisher": clean_text(message.get("publisher", "")),
+        "doi": clean_text(message.get("DOI", doi)).lower(),
+        "metadata_source": "crossref",
+        "metadata_error": "",
+    }
+
+
+def enrich_paper_metadata(result):
+    doi = result.get("doi", "")
+    if not doi:
+        return result
+    try:
+        metadata = fetch_crossref_metadata(doi)
+    except Exception as error:
+        result["metadata_error"] = f"Crossref metadata unavailable: {error}"
+        return result
+
+    for key in ("title", "abstract", "publication", "publisher", "doi", "metadata_source", "metadata_error"):
+        if metadata.get(key):
+            result[key] = metadata[key]
+    for key in ("authors", "year"):
+        if metadata.get(key):
+            result[key] = metadata[key]
+    return result
+
+
 def enrich_paper_result(result):
+    result = enrich_paper_metadata(result)
     translation = translate_paper_fields(result["title"], result["abstract"])
     result["original_title"] = result["title"]
     result["original_abstract"] = result["abstract"]
