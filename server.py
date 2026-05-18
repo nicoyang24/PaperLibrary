@@ -7,11 +7,14 @@ import os
 import subprocess
 import sys
 import webbrowser
+import ssl
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import quote, unquote, urlparse
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
+import certifi
 import fitz
 
 
@@ -30,6 +33,31 @@ PORT_FILE = STATIC_ROOT / "paper-library-port.json"
 MAX_PDF_BYTES = 35 * 1024 * 1024
 LIBRARY_FILES = ROOT / "library-files"
 ALLOWED_LOCAL_PATHS = set()
+
+
+def https_context():
+    return ssl.create_default_context(cafile=certifi.where())
+
+
+def is_certificate_error(error):
+    if isinstance(error, ssl.SSLCertVerificationError):
+        return True
+    reason = getattr(error, "reason", None)
+    if reason is not None and is_certificate_error(reason):
+        return True
+    cause = getattr(error, "__cause__", None)
+    if cause is not None and is_certificate_error(cause):
+        return True
+    return "CERTIFICATE_VERIFY_FAILED" in repr(error)
+
+
+def urlopen_for_download(request, timeout):
+    try:
+        return urlopen(request, timeout=timeout, context=https_context())
+    except URLError as error:
+        if is_certificate_error(error):
+            return urlopen(request, timeout=timeout, context=ssl._create_unverified_context())
+        raise
 
 
 def configure_argos_paths():
@@ -316,7 +344,7 @@ def fetch_crossref_metadata(doi):
             "User-Agent": "PaperLibrary/1.0 (mailto:paperlibrary.local@example.com)",
         },
     )
-    with urlopen(request, timeout=5) as response:
+    with urlopen_for_download(request, timeout=5) as response:
         payload = json.loads(response.read().decode("utf-8"))
     message = payload.get("message", {})
     container = message.get("container-title") or []
@@ -489,7 +517,7 @@ def download_pdf(url):
             "Accept": "application/pdf,*/*;q=0.8",
         },
     )
-    with urlopen(request, timeout=30) as response:
+    with urlopen_for_download(request, timeout=30) as response:
         content_length = response.headers.get("Content-Length")
         if content_length and int(content_length) > MAX_PDF_BYTES:
             raise ValueError("PDF file is larger than 35MB.")
