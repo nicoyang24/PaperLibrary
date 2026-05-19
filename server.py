@@ -35,8 +35,20 @@ LIBRARY_FILES = ROOT / "library-files"
 ALLOWED_LOCAL_PATHS = set()
 
 
+def certifi_bundle_path():
+    bundled_path = STATIC_ROOT / "certifi" / "cacert.pem"
+    if bundled_path.exists():
+        return str(bundled_path)
+    return certifi.where()
+
+
+CERTIFI_BUNDLE = certifi_bundle_path()
+os.environ.setdefault("SSL_CERT_FILE", CERTIFI_BUNDLE)
+os.environ.setdefault("REQUESTS_CA_BUNDLE", CERTIFI_BUNDLE)
+
+
 def https_context():
-    return ssl.create_default_context(cafile=certifi.where())
+    return ssl.create_default_context(cafile=CERTIFI_BUNDLE)
 
 
 def is_certificate_error(error):
@@ -54,7 +66,7 @@ def is_certificate_error(error):
 def urlopen_for_download(request, timeout):
     try:
         return urlopen(request, timeout=timeout, context=https_context())
-    except URLError as error:
+    except Exception as error:
         if is_certificate_error(error):
             return urlopen(request, timeout=timeout, context=ssl._create_unverified_context())
         raise
