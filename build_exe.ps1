@@ -12,7 +12,7 @@ Write-Host "Installing PyInstaller ..."
 & $python -m pip install pyinstaller
 
 Write-Host "Building Windows executable bundle ..."
-& $python -m PyInstaller --clean ".\PaperLibrary.spec"
+& $python -m PyInstaller --noconfirm --clean ".\PaperLibrary.spec"
 
 Copy-Item -LiteralPath ".env.example" -Destination "dist\PaperLibrary\.env" -Force
 

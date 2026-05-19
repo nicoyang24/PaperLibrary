@@ -1,6 +1,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
+import certifi
 
 
 root = Path.cwd()
@@ -16,6 +17,7 @@ a = Analysis(
         ("script.js", "."),
         (".env.example", "."),
         (".argos", ".argos"),
+        (certifi.where(), "certifi"),
     ],
     hiddenimports=[
         "argostranslate",
